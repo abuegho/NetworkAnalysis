@@ -1,6 +1,6 @@
 Initial Steps to Network Analysis
 ================
-Fadi Egho
+
 
 Fifth Tribe, a digital agency serving non-profits and government
 agencies, has scraped over 17,000 tweets from 107 ISIS-supporting
