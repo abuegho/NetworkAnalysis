@@ -101,8 +101,8 @@ InfoSimulator <- function(n, alpha, beta, steps = .05) {
 	#optimal <- ifelse(as.numeric(index[z > 0]) == as.numeric(playersAssets), 1, 0)
 	#committed <- ifelse(playersAssets == 0, 0, 1)
 	
-	return(data.frame(players, signal, AssetChosen = as.numeric(as.character(playersAssets)), 
-	                  iStar = as.numeric(as.character(index[z > 0]))))
+	return(data.frame(players, signal, AssetChosen = playersAssets, 
+	                  iStar = index[z > 0]))
 }
 
 
@@ -133,30 +133,35 @@ for (i in 1:3) {
 	HH[[i]] <- InfoSimulator(40, alphaH, betaH)
 	#sims[i] <- max(table(HH$playersAssets, HH$iStar))/40
 }
-for (i in 1:3) {
-  ##tmp <- HH[[i]]
-  HH[[i]]$optimal <- ifelse(HH[[i]]$iStar == HH[[i]]$AssetChosen, 1, 0)
-  HH[[i]]$committed <- ifelse(HH[[i]]$AssetChosen == 0, 0, 1)
-  
+
+agg2 <- NULL
+for (i in 1:1000) {
+  tmp <- InfoSimulator(40, alphaH, betaH)
+  tmp$optimal <- ifelse(tmp$iStar == tmp$AssetChosen, 1, 0)
+  tmp$committed <- ifelse(tmp$AssetChosen == 0, 0, 1)
+  agg <- tmp %>% 
+    summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+              sig_prevalence = mean(signal))
+  agg2 <- rbind(agg2, agg)
 }
 
-HH[[3]][4, 4] %>% as.character() %>% as.numeric() == HH[[3]][4, 3]
+ggplot(agg2) +
+  geom_density(aes(optimal_rate, fill = 'Optimal', alpha = .6)) +
+  geom_density(aes(sig_prevalence, fill = 'signal', alpha = .6))
 
-HH <- list()
-
-for (i in 1:3) {
-	HH[[i]] <- InfoSimulator(40, alphaH, betaH)
-}
-
-table(HH[[1]]$signal, HH[[1]]$playersAssets, HH[[1]]$iStar)
 
 
 
 ################################################################################
-HL <- list()
+aggHL <- NULL
 system.time(for (i in 1:1000) {
-	HL[i] <- InfoSimulator(40, alphaH, betaL)
-	#sims[i] <- max(table(HL$playersAssets, HL$iStar))/40
+  tmp <- InfoSimulator(40, alphaH, betaL)
+  tmp$optimal <- ifelse(tmp$iStar == tmp$AssetChosen, 1, 0)
+  tmp$committed <- ifelse(tmp$AssetChosen == 0, 0, 1)
+  agg <- tmp %>% 
+    summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+              sig_prevalence = mean(signal))
+  aggHL <- rbind(aggHL, agg)
 })
 #HLRes <- sims
 
@@ -164,21 +169,31 @@ hist(HLRes)
 plot(density(HLRes))
 
 ################################################################################
-LH <- list()
-for (i in 1:1000) {
-	LH <- InfoSimulator(40, alphaL, betaH)
-	sims[i] <- max(table(LH$playersAssets, LH$iStar))/40
-}
+aggLH <- NULL
+system.time(for (i in 1:1000) {
+  tmp <- InfoSimulator(40, alphaL, betaH)
+  tmp$optimal <- ifelse(tmp$iStar == tmp$AssetChosen, 1, 0)
+  tmp$committed <- ifelse(tmp$AssetChosen == 0, 0, 1)
+  agg <- tmp %>% 
+    summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+              sig_prevalence = mean(signal))
+  aggLH <- rbind(aggLH, agg)
+})
 hist(LHRes)
 plot(density(LHRes))
 
 
 
 ################################################################################
-LL <- list()
+aggLL <- NULL
 for (i in 1:1000) {
-	LL <- InfoSimulator(40, alphaL, betaL)
-	sims[i] <- max(table(LL$playersAssets, LL$iStar))/40
+	tmp <- InfoSimulator(40, alphaL, betaL)
+	tmp$optimal <- ifelse(tmp$iStar == tmp$AssetChosen, 1, 0)
+	tmp$committed <- ifelse(tmp$AssetChosen == 0, 0, 1)
+	agg <- tmp %>% 
+	  summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+	            sig_prevalence = mean(signal))
+	aggLL <- rbind(aggLL, agg)
 }
 LLRes <- sims
 hist(LLRes)
