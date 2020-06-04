@@ -56,12 +56,14 @@ InfoSimulator <- function(n, alpha, beta, steps = .05) {
 						   	   index[rdunif(1, 0, 20) + 1]))
 	
 	playersAssets <- numeric(n)
+	Signal_Prime <- numeric(n)
 	playersAssets[1] <- p1AssetIndex      ### Rule 1
 	vifelse <- Vectorize(ifelse)
 	for (i in 2:n) {
 		if (signal[i] == 1) {  ## e.g, sig' is .3
 			sigPrime <- ifelse(rbinom(1, 1, beta) == 1, index[z > 0],
 							   index[rdunif(1, 0, 20) + 1])
+			Signal_Prime[i] <- sigPrime
 			nonzeros <- playersAssets != 0
 			a <- max(sigPrime == playersAssets)
 			b <- max(table(playersAssets[vifelse(sum(nonzeros) == 0, c(1, rep(0, n - 1)), nonzeros)]))
@@ -102,21 +104,24 @@ InfoSimulator <- function(n, alpha, beta, steps = .05) {
 	#committed <- ifelse(playersAssets == 0, 0, 1)
 	
 	return(data.frame(players, signal, AssetChosen = playersAssets, 
-	                  iStar = index[z > 0]))
+	                  iStar = index[z > 0], Signal_Prime))
 }
 
 
 
 betaH <- .85
 betaL <- .15
+betaM <- .5
 
 alphaH <- .85
 alphaL <- .15
+alphaM <- .51
 #table(playersAssets)
 #cbind(index, z)
 
 HH <- InfoSimulator(40, alphaL, betaH)
-HH
+HH 
+ # summarise(rate = ))
 HH$optimal <- ifelse(HH$iStar == HH$AssetChosen, 1, 0)
 HH$committed <- ifelse(HH$AssetChosen == 0, 0, 1)
 
@@ -135,7 +140,7 @@ for (i in 1:3) {
 }
 
 agg2 <- NULL
-for (i in 1:1000) {
+for (i in 1:10000) {
   tmp <- InfoSimulator(40, alphaH, betaH)
   tmp$optimal <- ifelse(tmp$iStar == tmp$AssetChosen, 1, 0)
   tmp$committed <- ifelse(tmp$AssetChosen == 0, 0, 1)
@@ -145,20 +150,45 @@ for (i in 1:1000) {
   agg2 <- rbind(agg2, agg)
 }
 
-ggplot(agg2) +
-  geom_density(aes(optimal_rate, fill = 'Optimal', alpha = .6)) +
-  geom_density(aes(sig_prevalence, fill = 'signal', alpha = .6))
+aggHH <- NULL
+for (i in 1:2000) {
+  tmp <- InfoSimulator(40, alphaH, betaH)
+  agg <- tmp %>% 
+    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'Leaderless Eq', 'Leader Eq.'),
+           optimal = if_else(iStar == AssetChosen, 1, 0),
+           committed = if_else(AssetChosen == 0, 0, 1)) %>% 
+    group_by(Influenced) %>% 
+    summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+              sig_prevalence = mean(signal),
+              Herd_Index = sum(signal * (Signal_Prime != AssetChosen)) / sum(signal))
+  aggHH <- rbind(aggHH, agg)
+}
 
 
-
+ggplot(aggHH) +
+  geom_density(aes(sig_prevalence, fill = Herd_Index)) +
+  geom_density(aes(optimal_rate, fill = Influenced, alpha = .6)) +
+  geom_density(aes(Herd_Index))
+  #geom_density(aes(sig_prevalence, fill = 'signal', alpha = .6)) +
+  #geom_density(aes(commit_Rate))
+ggplot(aggHH, aes(Herd_Index, fill = Influenced, alpha = .4)) + geom_density()
+# InfoSimulator(40, alphaL, betaL) %>% 
+#   mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
+#          optimal = if_else(iStar == AssetChosen, 1, 0),
+#          committed = AssetChosen == 0, 0, 1) %>% 
+#   group_by(Influenced) %>% 
+#   summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+#             sig_prevalence = mean(signal))
 
 ################################################################################
 aggHL <- NULL
-system.time(for (i in 1:1000) {
+system.time(for (i in 1:2000) {
   tmp <- InfoSimulator(40, alphaH, betaL)
-  tmp$optimal <- ifelse(tmp$iStar == tmp$AssetChosen, 1, 0)
-  tmp$committed <- ifelse(tmp$AssetChosen == 0, 0, 1)
   agg <- tmp %>% 
+    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
+           optimal = if_else(iStar == AssetChosen, 1, 0),
+           committed = AssetChosen == 0, 0, 1) %>% 
+    group_by(Influenced) %>% 
     summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
               sig_prevalence = mean(signal))
   aggHL <- rbind(aggHL, agg)
@@ -168,13 +198,21 @@ system.time(for (i in 1:1000) {
 hist(HLRes)
 plot(density(HLRes))
 
+ggplot(aggHL, aes(sig_prevalence, fill = 'Signal')) +
+  geom_density() +
+  geom_density(aes(optimal_rate, fill = Influenced, alpha = .6)) +
+  geom_density(aes(sig_prevalence, fill = 'Signal', alpha = .6)) +
+  geom_density(aes(commit_Rate))
+
 ################################################################################
 aggLH <- NULL
-system.time(for (i in 1:1000) {
+system.time(for (i in 1:2000) {
   tmp <- InfoSimulator(40, alphaL, betaH)
-  tmp$optimal <- ifelse(tmp$iStar == tmp$AssetChosen, 1, 0)
-  tmp$committed <- ifelse(tmp$AssetChosen == 0, 0, 1)
   agg <- tmp %>% 
+    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
+           optimal = if_else(iStar == AssetChosen, 1, 0),
+           committed = AssetChosen == 0, 0, 1) %>% 
+    group_by(Influenced) %>% 
     summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
               sig_prevalence = mean(signal))
   aggLH <- rbind(aggLH, agg)
@@ -182,20 +220,57 @@ system.time(for (i in 1:1000) {
 hist(LHRes)
 plot(density(LHRes))
 
+ggplot(aggLH, aes(sig_prevalence, fill = 'Signal')) +
+  geom_density() +
+  geom_density(aes(optimal_rate, fill = Influenced, alpha = .6)) +
+  geom_density(aes(sig_prevalence, fill = Influenced, alpha = .6)) +
+  geom_density(aes(commit_Rate))
 
 
 ################################################################################
 aggLL <- NULL
-for (i in 1:1000) {
+for (i in 1:2000) {
 	tmp <- InfoSimulator(40, alphaL, betaL)
-	tmp$optimal <- ifelse(tmp$iStar == tmp$AssetChosen, 1, 0)
-	tmp$committed <- ifelse(tmp$AssetChosen == 0, 0, 1)
 	agg <- tmp %>% 
+	  mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'uninfluenced Equilibrium', 'Influenced Equilibrium'),
+	         optimal = if_else(iStar == AssetChosen, 1, 0),
+	         committed = AssetChosen == 0, 0, 1) %>% 
+	  group_by(Influenced) %>% 
 	  summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
 	            sig_prevalence = mean(signal))
 	aggLL <- rbind(aggLL, agg)
 }
+
+ggplot(aggLL, aes(sig_prevalence, fill = 'Signal')) +
+  geom_density() +
+  geom_density(aes(optimal_rate, fill = Influenced, alpha = .6)) +
+  #geom_density(aes(sig_prevalence, fill = 'signal', alpha = .6)) +
+  geom_density(aes(commit_Rate))
+
 LLRes <- sims
 hist(LLRes)
 plot(density(LLRes))
 LL
+
+aggMM <- NULL
+for (i in 1:2000) {
+  tmp <- InfoSimulator(40, alphaM, betaM)
+  agg <- tmp %>% 
+    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'uninfluenced Equilibrium', 'Influenced Equilibrium'),
+           optimal = if_else(iStar == AssetChosen, 1, 0),
+           committed = AssetChosen == 0, 0, 1) %>% 
+    group_by(Influenced) %>% 
+    summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+              sig_prevalence = mean(signal))
+  aggMM <- rbind(aggMM, agg)
+}
+
+ggplot(aggMM, aes(sig_prevalence)) +
+  geom_density() +
+  geom_density(aes(optimal_rate, fill = 'optimal', alpha = .6))
+
+aggHH$Combo <- 'High Prevalence/High Quality'
+aggHL$Combo <- 'High Prevalence/Low Quality'
+aggLH$Combo <- 'Low Prevalence/ High Quality'
+aggLL$Combo <- 'Low Prevalence/ Low Quality'
+aggMM$Combo <- 'Medium Prevalence/ Medium Quality'
