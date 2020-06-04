@@ -1,3 +1,5 @@
+### Replication of Banerjee's 1992 paper on Herd Behaviour
+
 library(foreach)
 library(doParallel)
 library(tidyverse)
@@ -5,6 +7,34 @@ library(tidyverse)
 set.seed(90)
 
 InfoSimulator <- function(n, alpha, beta, steps = .05) {
+  #' Generates a simulation of how information (signal) spreads
+  #' 
+  #' There are five Decision rules
+  #' 1) The first player follows his signal if he has one and chooses zero-th asset otherwise
+  #' 2) The next players will follow their signals 
+  #'   (a) if their signal at least one player has chosen an asset matching their signal
+  #' 
+  #' Inspired by Banerjee's 1992 paper on Modelling Herd Behaviour
+  #' 
+  #' @description This function takes a given number of players, a signal 
+  #' prevalence, quality of the signal, and maps out how a signal disseminates
+  #' through a population using simple decision rules. Signal describes 
+  #' which asset amongst a set of assets carries excess returns. See Banerjee
+  #' 1992 for more details.
+  #' 
+  #' 
+  #' @param n number of players
+  #' @param alpha probability a given player receives a signal (Prevalence)
+  #' @param beta probability that a signal is informative (Quality);
+  #' uniform across all players
+  #' @param steps increment of the sequence (check details below)
+  #' @usage InfoSimulator(50, alpha = 0.65, beta = runif(1), steps = 0.1)
+  #' @return Dataframe containing players, whether they received a signal, which
+  #' asset they ended up choosing (a number between [0, 1] based of steps argument),
+  #' and iStart, which is the asset that had the excess returns
+  #' @references Abhijit V. Banerjee. A simple model of herd behavior. The Quarterly Journal of
+  #' Economics, 107(3):797–817, 1992.
+  
 	players <- 1:n
 	for (i in players) {
 		players[i] <- paste('player', i)
