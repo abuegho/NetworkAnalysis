@@ -1,7 +1,6 @@
 ### Replication of Banerjee's 1992 paper on Herd Behaviour
 
-library(foreach)
-library(doParallel)
+library(ggthemes)
 library(tidyverse)
 
 set.seed(90)
@@ -187,10 +186,12 @@ system.time(for (i in 1:2000) {
   agg <- tmp %>% 
     mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
            optimal = if_else(iStar == AssetChosen, 1, 0),
-           committed = AssetChosen == 0, 0, 1) %>% 
+           committed = if_else(AssetChosen == 0, 0, 1),
+           defied = Signal_Prime != AssetChosen) %>% 
     group_by(Influenced) %>% 
     summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
-              sig_prevalence = mean(signal))
+              sig_prevalence = mean(signal),
+              Herd_Index = sum(signal * defied) / sum(signal))
   aggHL <- rbind(aggHL, agg)
 })
 #HLRes <- sims
@@ -205,16 +206,38 @@ ggplot(aggHL, aes(sig_prevalence, fill = 'Signal')) +
   geom_density(aes(commit_Rate))
 
 ################################################################################
-aggLH <- NULL
+agg <- NULL
+system.time(for (i in 1:2000) {
+  tmp <- InfoSimulator(40, alphaL, betaH)
+  agg1 <- tmp %>% 
+    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
+           run = paste('run', i))
+  agg <- rbind(agg, agg1)
+})
+LHagg <- agg
+aggLH <- LHagg %>% 
+  mutate(optimal = if_else(iStar == AssetChosen, 1, 0),
+                        committed = if_else(AssetChosen == 0, 0, 1),
+                        defied = Signal_Prime != AssetChosen) %>% 
+  group_by(run, Influenced) %>% 
+  summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+              sig_prevalence = mean(signal),
+              Herd_Index = sum(signal * defied) / sum(signal)) %>% 
+  ungroup() %>% select(-run)
+    
+
+aggLH <- aggLH %>% select(-run)
 system.time(for (i in 1:2000) {
   tmp <- InfoSimulator(40, alphaL, betaH)
   agg <- tmp %>% 
     mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
            optimal = if_else(iStar == AssetChosen, 1, 0),
-           committed = AssetChosen == 0, 0, 1) %>% 
+           committed = if_else(AssetChosen == 0, 0, 1),
+           defied = Signal_Prime != AssetChosen) %>% 
     group_by(Influenced) %>% 
     summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
-              sig_prevalence = mean(signal))
+              sig_prevalence = mean(signal),
+              Herd_Index = sum(signal * defied) / sum(signal))
   aggLH <- rbind(aggLH, agg)
 })
 hist(LHRes)
@@ -228,16 +251,37 @@ ggplot(aggLH, aes(sig_prevalence, fill = 'Signal')) +
 
 
 ################################################################################
+LLagg <- NULL
+system.time(for (i in 1:2000) {
+  tmp <- InfoSimulator(40, alphaL, betaL)
+  agg1 <- tmp %>% 
+    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
+           run = paste('run', i))
+  LLagg <- rbind(LLagg, agg1)
+})
+
+aggLL <- LLagg %>% 
+  mutate(optimal = if_else(iStar == AssetChosen, 1, 0),
+         committed = if_else(AssetChosen == 0, 0, 1),
+         defied = Signal_Prime != AssetChosen) %>% 
+  group_by(run, Influenced) %>% 
+  summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+            sig_prevalence = mean(signal),
+            Herd_Index = sum(signal * defied) / sum(signal)) %>% 
+  ungroup() %>% select(-run)
+
 aggLL <- NULL
 for (i in 1:2000) {
 	tmp <- InfoSimulator(40, alphaL, betaL)
 	agg <- tmp %>% 
-	  mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'uninfluenced Equilibrium', 'Influenced Equilibrium'),
+	  mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
 	         optimal = if_else(iStar == AssetChosen, 1, 0),
-	         committed = AssetChosen == 0, 0, 1) %>% 
+	         committed = if_else(AssetChosen == 0, 0, 1),
+	         defied = Signal_Prime != AssetChosen) %>% 
 	  group_by(Influenced) %>% 
 	  summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
-	            sig_prevalence = mean(signal))
+	            sig_prevalence = mean(signal),
+	            Herd_Index = sum(signal * defied) / sum(signal))
 	aggLL <- rbind(aggLL, agg)
 }
 
@@ -251,26 +295,57 @@ LLRes <- sims
 hist(LLRes)
 plot(density(LLRes))
 LL
+#################################################################################################
+MMagg <- NULL
+system.time(for (i in 1:2000) {
+  tmp <- InfoSimulator(40, alphaM, betaM)
+  agg1 <- tmp %>% 
+    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
+           run = paste('run', i))
+  MMagg <- rbind(MMagg, agg1)
+})
+
+aggMM <- MMagg %>% 
+  mutate(optimal = if_else(iStar == AssetChosen, 1, 0),
+         committed = if_else(AssetChosen == 0, 0, 1),
+         defied = Signal_Prime != AssetChosen) %>% 
+  group_by(run, Influenced) %>% 
+  summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
+            sig_prevalence = mean(signal),
+            Herd_Index = sum(signal * defied) / sum(signal)) %>% 
+  ungroup() %>% select(-run)
+
 
 aggMM <- NULL
 for (i in 1:2000) {
   tmp <- InfoSimulator(40, alphaM, betaM)
   agg <- tmp %>% 
-    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'uninfluenced Equilibrium', 'Influenced Equilibrium'),
+    mutate(Influenced = if_else(sum(signal[1:2]) == 0, 'No', 'Yes'),
            optimal = if_else(iStar == AssetChosen, 1, 0),
-           committed = AssetChosen == 0, 0, 1) %>% 
+           committed = if_else(AssetChosen == 0, 0, 1),
+           defied = Signal_Prime != AssetChosen) %>% 
     group_by(Influenced) %>% 
     summarise(commit_Rate = mean(committed), optimal_rate = mean(optimal),
-              sig_prevalence = mean(signal))
+              sig_prevalence = mean(signal),
+              Herd_Index = sum(signal * defied) / sum(signal))
   aggMM <- rbind(aggMM, agg)
 }
 
-ggplot(aggMM, aes(sig_prevalence)) +
+p2 <- ggplot(aggMM, aes(sig_prevalence)) +
   geom_density() +
   geom_density(aes(optimal_rate, fill = 'optimal', alpha = .6))
 
+aggHH$Influenced <- ifelse(aggHH$Influenced == 'Leaderless Eq','No' , 'Yes')
 aggHH$Combo <- 'High Prevalence/High Quality'
 aggHL$Combo <- 'High Prevalence/Low Quality'
 aggLH$Combo <- 'Low Prevalence/ High Quality'
 aggLL$Combo <- 'Low Prevalence/ Low Quality'
 aggMM$Combo <- 'Medium Prevalence/ Medium Quality'
+
+df <- rbind(aggHH, aggHL, aggLH, aggLL, aggMM)
+p <- ggplot(df) + 
+  geom_density(aes(optimal_rate, fill = Influenced, alpha = .5)) +
+  geom_density(aes(Herd_Index), col = 'violetred2', size = 1) +
+  facet_wrap(. ~ Combo, nrow = 5, scales = 'free') +
+  theme_base()
+
