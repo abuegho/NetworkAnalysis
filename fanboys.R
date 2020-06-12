@@ -1,8 +1,10 @@
 library(readxl)
 library(tidyverse)
 library(stringi)
+library(igraph)
+library(ggraph)
 
-twtr <- read_excel('../OneDrive - California Polytechnic State University/S580/tweets.xlsx')
+twtr <- read_excel('tweets.xlsx')
 
 twtr$tweets <- gsub('\n', ' ', twtr$tweets, fixed = T)
 
@@ -80,11 +82,11 @@ E(tGs)$weight <- twoWays$men
 ggraph::autograph(tGs)
 plot(tGs)
 
-library(ggraph)
 
 ggraph(twitG, layout = 'with_kk') +
   geom_edge_link(aes(alpha = weight)) +
-  geom_node_point(aes(size = degree(twitG), col = degree(twitG))) ##+
+  geom_node_point() +
+  scale_color_grey()
 #  geom_text(data = V(twitG)['Uncle_SamCoco'])
 
 sort(degree(twitG), decreasing = T) %>% head(15) %>% enframe() %>% View()
@@ -101,3 +103,4 @@ sort(betweenness(twitG, weights = edgesDF$men), decreasing = T)
 sc <- closeness(twitG)
 igraph::centralize(sc)
 closeness(twitG) %>% sort(decreasing = T) %>% head(15)
+geomed
